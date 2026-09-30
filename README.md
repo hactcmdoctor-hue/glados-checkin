@@ -58,50 +58,6 @@ your-repo/
 
 ---
 
-## 第二步 B：本机 Windows 定时任务
-
-适合你有常开的 Windows 机器。
-
-**1. 本地测试**（PowerShell 里执行，`$env:` 设置的变量只在当前窗口有效）：
-
-```powershell
-cd C:\Users\JXJYLM\WorkBuddy\2026-09-30-08-59-55\glados-checkin
-$env:GLADOS_COOKIE="koa:sess=xxxx; koa:sess.sig=yyyy"
-python checkin.py
-```
-
-看到 `签到完成` 就成功了。双击 `run.bat` 也可以，它会提示你输入 Cookie。
-
-**2. 建计划任务**（管理员 PowerShell 执行一次）：
-
-```powershell
-$action  = New-ScheduledTaskAction -Execute "python.exe" `
-           -Argument "checkin.py" `
-           -WorkingDirectory "C:\Users\JXJYLM\WorkBuddy\2026-09-30-08-59-55\glados-checkin"
-$trigger = New-ScheduledTaskTrigger -Daily -At "09:30"
-Register-ScheduledTask -TaskName "GLaDOS-Checkin" -Action $action -Trigger $trigger -Force
-```
-
-**3. 给计划任务设置环境变量**（这一步容易漏，别用 `$env:`，它对计划任务无效）：
-
-```powershell
-$env = (Get-ScheduledTask -TaskName "GLaDOS-Checkin").Principal
-Set-ScheduledTask -TaskName "GLaDOS-Checkin" `
-  -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopIfGoingOnBatteries)
-```
-
-然后用 GUI 补环境变量：任务计划程序 → 找到 `GLaDOS-Checkin` → 属性 → 在"操作"里改为调用 `run.bat`，并在 `run.bat` 里把 Cookie 写死（本机自己用的话更简单可靠）。
-
-> 最省事的办法：直接改 `run.bat`，把 `set GLADOS_COOKIE=` 后面填上你的 Cookie，计划任务调用 bat 即可。
-
-**Linux / 树莓派 / VPS 用户**：
-
-```bash
-30 9 * * * export GLADOS_COOKIE="koa:sess=xxx; koa:sess.sig=yyy"; \
-cd /path/to/glados-checkin && python3 checkin.py >> glados.log 2>&1
-```
-
----
 
 ## 第三步：确认真的在涨天数
 
