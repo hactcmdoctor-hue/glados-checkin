@@ -1,0 +1,36 @@
+name: GLaDOS Checkin
+
+on:
+  schedule:
+    # GitHub Actions 使用 UTC 时间，北京时间 = UTC + 8
+    - cron: '30 1 * * *'    # 北京时间 09:30
+    - cron: '30 13 * * *'   # 北京时间 21:30
+  workflow_dispatch:        # 允许在 Actions 页面手动点一下立即执行
+
+jobs:
+  checkin:
+    # 锁定 24.04，避免 ubuntu-latest 在 2026-10-19 迁移到 Ubuntu 26 后行为变化
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v5        # v4 会触发 Node 20 弃用警告
+
+      - name: 准备 Python
+        uses: actions/setup-python@v6    # v5 会触发 Node 20 弃用警告
+        with:
+          python-version: '3.11'
+
+      - name: 执行签到
+        env:
+          # 容错：Secret 和 Variables 都能取到。
+          # 很多人填到了 Variables 标签页（它和 Secrets 挨着），加 vars 兜底就不至于空手而归。
+          GLADOS_COOKIE: ${{ secrets.GLADOS_COOKIE || vars.GLADOS_COOKIE }}
+          GLADOS_BASE: ${{ secrets.GLADOS_BASE || vars.GLADOS_BASE }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python checkin.py
