@@ -169,16 +169,56 @@ def notify(title, content):
 
 
 def main():
-    raw = os.environ.get("GLADOS_COOKIE", "").strip()
-    if not raw:
-        log("未设置环境变量 GLADOS_COOKIE，退出。")
-        log("获取方式：登录 glados.rocks -> F12 -> Network -> 打开 /console/checkin "
-            "-> 任意请求 -> Request Headers -> 复制 cookie 值")
+    raw = os.environ.get("GLADOS_COOKIE", "")
+
+    # ---------- 情况一：完全没拿到 Cookie ----------
+    if not raw.strip():
+        log("=" * 62)
+        log("失败：环境变量 GLADOS_COOKIE 是空的，脚本没拿到 Cookie。")
+        log("=" * 62)
+        hints = sorted(k for k in os.environ
+                       if ("GLADOS" in k.upper() or "COOKIE" in k.upper()))
+        if hints:
+            log("检测到名字相近的环境变量：%s" % ", ".join(hints))
+            log("  -> Secret 名字可能拼错了，正确名称必须严格等于 GLADOS_COOKIE")
+        else:
+            log("运行环境里连名字相近的变量都没有，说明 Secret 根本没传进 workflow。")
+        log("")
+        log("按顺序排查：")
+        log("  1. 打开仓库 Settings -> Secrets and variables -> Actions")
+        log("  2. 确认条目建在【Secrets】标签页里，不是隔壁的【Variables】标签页")
+        log("     （这两个标签挨在一起，是最常见的填错点）")
+        log("  3. 名称必须严格等于 GLADOS_COOKIE：区分大小写、前后不要有空格")
+        log("  4. 改完 Secret 要重新 Run workflow，已经结束的运行不会自动重跑")
+        log("")
+        log("完成率最高的一招：删掉重建一次 Secret，别在旧条目上改。")
         return 2
 
+    # ---------- 情况二：有值但格式不对 ----------
     cookies = parse_cookies(raw)
     if not cookies:
-        log("GLADOS_COOKIE 里没找到 koa:sess 字段，请检查是否复制完整。")
+        log("=" * 62)
+        log("失败：GLADOS_COOKIE 有值，但里面找不到 koa:sess 字段。")
+        log("=" * 62)
+        n = len(raw.strip())
+        log("诊断信息（不打印你的 Cookie 内容，只做结构检查）：")
+        log("  长度        ：%d 个字符（正常应在 100 ~ 500 之间）" % n)
+        log("  含分号 ;    ：%s（正常应为 True，Cookie 是两段用分号隔开的）"
+            % (";" in raw))
+        log("  含等号 =    ：%s（正常应为 True）" % ("=" in raw))
+        log("  含 koa 字样 ：%s（正常应为 True）" % ("koa" in raw.lower()))
+        log("")
+        log("正确格式应该长这样：")
+        log("  koa:sess=eyJ1c2VySWQiOjEyM30=; koa:sess.sig=AbCdEf123456")
+        log("")
+        log("最常见的三种错：")
+        log("  * 只复制了 koa:sess 一段，漏了后面的 koa:sess.sig")
+        log("  * 把整个 Request Headers 都粘进来了 —— 应该只取 cookie: 那一项的值")
+        log("  * 复制时带了 cookie: 这个前缀，或带了引号")
+        log("")
+        log("重新抓取：登录 glados.rocks -> 打开 /console/checkin -> F12 -> Network")
+        log("  -> 刷新页面 -> 点 checkin 或 status 请求 -> Request Headers")
+        log("  -> 找到 cookie: 这一行 -> 只复制它冒号后面的值")
         return 2
 
     log("=" * 60)
